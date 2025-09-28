@@ -1,1 +1,118 @@
+using System;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
+using Telegram.Bot;
+using Telegram.Bot.Exceptions;
+using Telegram.Bot.Polling;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
+
+class Program
+{
+    // Храним баланс пользователей (userId -> balance)
+    private static ConcurrentDictionary<long, int> balances = new ConcurrentDictionary<long, int>();
+
+    static async Task Main()
+    {
+        var botClient = new TelegramBotClient("ТОКЕН_ТВОЕГО_БОТА"); // вставь свой токен от BotFather
+
+        using CancellationTokenSource cts = new CancellationTokenSource();
+
+        // Настраиваем получение апдейтов
+        var receiverOptions = new ReceiverOptions
+        {
+            AllowedUpdates = Array.Empty<UpdateType>() // получаем все апдейты
+        };
+
+        botClient.StartReceiving(
+            HandleUpdateAsync,
+            HandleErrorAsync,
+            receiverOptions,
+            cts.Token
+        );
+
+        var me = await botClient.GetMeAsync();
+        Console.WriteLine($"Бот @{me.Username} запущен!");
+        Console.ReadLine();
+
+        // Останавливаем
+        cts.Cancel();
+    }
+
+    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+    {
+        if (update.Message is not { } message)
+            return;
+
+        if (message.Text is not { } messageText)
+            return;
+
+        var chatId = message.Chat.Id;
+
+        if (messageText.StartsWith("/start"))
+        {
+            balances.TryAdd(chatId, 0);
+            await botClient.SendTextMessageAsync(
+                chatId,
+                "Привет! Я твой финансовый помощник.\n" +
+                "Используй команды:\n" +
+                "💰 /доход сумма – добавить заработанное\n" +
+                "💸 /расход сумма – добавить потраченное\n" +
+                "📊 /баланс – показать баланс",
+                cancellationToken: cancellationToken);
+        }
+        else if (messageText.StartsWith("/доход"))
+        {
+            if (int.TryParse(messageText.Replace("/доход", "").Trim(), out int amount))
+            {
+                balances.AddOrUpdate(chatId, amount, (id, old) => old + amount);
+                await botClient.SendTextMessageAsync(
+                    chatId,
+                    $"✅ Доход {amount} добавлен.\nТекущий баланс: {balances[chatId]}",
+                    cancellationToken: cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, "❌ Укажи сумму: /доход 1000", cancellationToken: cancellationToken);
+            }
+        }
+        else if (messageText.StartsWith("/расход"))
+        {
+            if (int.TryParse(messageText.Replace("/расход", "").Trim(), out int amount))
+            {
+                balances.AddOrUpdate(chatId, -amount, (id, old) => old - amount);
+                await botClient.SendTextMessageAsync(
+                    chatId,
+                    $"✅ Расход {amount} добавлен.\nТекущий баланс: {balances[chatId]}",
+                    cancellationToken: cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, "❌ Укажи сумму: /расход 500", cancellationToken: cancellationToken);
+            }
+        }
+        else if (messageText.StartsWith("/баланс"))
+        {
+            balances.TryGetValue(chatId, out int balance);
+            await botClient.SendTextMessageAsync(
+                chatId,
+                $"📊 Твой текущий баланс: {balance}",
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+    {
+        var errorMessage = exception switch
+        {
+            ApiRequestException apiRequestException
+                => $"Ошибка Telegram API:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
+            _ => exception.ToString()
+        };
+
+        Console.WriteLine(errorMessage);
+        return Task.CompletedTask;
+    }
+}
 
