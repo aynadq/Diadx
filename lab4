@@ -1,0 +1,251 @@
+
+
+Тема программы:
+
+Система управления университетом
+
+Описание:
+
+Программа предназначена для моделирования работы университета: преподаватели, студенты, курсы, расписания, оценки и т.п.
+
+Классы и связи между ними (структура):
+
+Элемент	Описание
+Person	Абстрактный базовый класс для Student и Instructor. Реализует IPersonActions.
+Faculty	Управляет курсами, реализует ICourseManagement.
+Course	Представляет курс, может быть запланирован (ISchedulable), содержит студентов и преподавателей.
+Grade	Хранит оценки студентов по курсам, реализует IGradable.
+Schedule	Содержит расписание занятий.
+University	Управляет факультетами.
+
+        <<interface>>
+        IPersonActions
+        + GetInfo()
+
+               ▲
+               |
+        +--------------+
+        |   Person     | (abstract)
+        +--------------+
+        | - Name: string
+        | - Email: string
+        +--------------+
+        | + GetInfo()
+               ▲
+        ┌──────┴────────┐
+        |               |
++----------------+  +------------------+
+|    Student     |  |   Instructor     |
++----------------+  +------------------+
+| - Id: string   |  | - EmployeeId: string
++----------------+  +------------------+
+| + Enroll()     |  | + AssignCourse() |
++----------------+  +------------------+
+
+
+        <<interface>>
+        ICourseManagement
+        + AddCourse(course)
+        + RemoveCourse(course)
+
+        <<interface>>
+        ISchedulable
+        + ScheduleClass(schedule)
+
+        <<interface>>
+        IGradable
+        + GetLetterGrade()
+
+
+           University
+           +----------------------+
+           | - Name: string       |
+           | - Address: string    |
+           +----------------------+
+           | + AddFaculty()       |
+           | + RemoveFaculty()    |
+           +----------------------+
+                    |
+                    | 1
+                    |
+                    | *
+                +--------+
+                | Faculty |
+                +--------+
+                | - Name: string
+                | - Dean: Person
+                +----------------------+
+                | + AddCourse()        |  <<implements>> ICourseManagement
+                | + RemoveCourse()     |
+                +----------------------+
+                    |
+                    | *
+                    ▼
+              +------------+
+              |  Course    |
+              +------------+
+              | - Code     |
+              | - Title    |
+              | - Credits  |
+              +-------------------------+
+              | + AddStudent()          |
+              | + AddInstructor()       |
+              | + ScheduleClass()       | <<implements>> ISchedulable
+              +-------------------------+
+               ▲               ▲
+               |               |
+             * |             * |
+        +----------+     +------------+
+        | Student  |     | Instructor |
+        +----------+     +------------+
+
+
+          Schedule
+          +-------------------+
+          | - DateTime: Date  |
+          | - Location: string|
+          +-------------------+
+          | + Reschedule()    |
+          +-------------------+
+
+          Grade <<implements>> IGradable
+          +---------------------+
+          | - Score: double     |
+          | - Student: Student  |
+          | - Course: Course    |
+          +---------------------+
+          | + GetLetterGrade()  |
+          +---------------------+
+
+
+
+
+
+
+
+
+
+
+using System;
+using System.Collections.Generic;
+
+namespace UniversitySystem
+{
+    // ===== ИНТЕРФЕЙСЫ =====
+
+    public interface IPersonActions
+    {
+        void GetInfo();
+    }
+
+    public interface ICourseManagement
+    {
+        void AddCourse(Course course);
+        void RemoveCourse(Course course);
+    }
+
+    public interface ISchedulable
+    {
+        void ScheduleClass(Schedule schedule);
+    }
+
+    public interface IGradable
+    {
+        string GetLetterGrade();
+    }
+
+    // ===== АБСТРАКТНЫЙ КЛАСС =====
+
+    public abstract class Person : IPersonActions
+    {
+        public string Name { get; set; }
+        public string Email { get; set; }
+
+        public virtual void GetInfo() { }
+    }
+
+    // ===== КЛАССЫ =====
+
+    public class Student : Person
+    {
+        public string Id { get; set; }
+
+        public void Enroll(Course course) { }
+    }
+
+    public class Instructor : Person
+    {
+        public string EmployeeId { get; set; }
+
+        public void AssignCourse(Course course) { }
+    }
+
+    public class University
+    {
+        public string Name { get; set; }
+        public string Address { get; set; }
+
+        public List<Faculty> Faculties { get; set; } = new List<Faculty>();
+
+        public void AddFaculty(Faculty faculty) { }
+
+        public void RemoveFaculty(Faculty faculty) { }
+    }
+
+    public class Faculty : ICourseManagement
+    {
+        public string Name { get; set; }
+        public Person Dean { get; set; }
+
+        public List<Course> Courses { get; set; } = new List<Course>();
+
+        public void AddCourse(Course course) { }
+
+        public void RemoveCourse(Course course) { }
+    }
+
+    public class Course : ISchedulable
+    {
+        public string Code { get; set; }
+        public string Title { get; set; }
+        public int Credits { get; set; }
+
+        public List<Student> Students { get; set; } = new List<Student>();
+        public List<Instructor> Instructors { get; set; } = new List<Instructor>();
+        public List<Schedule> Schedules { get; set; } = new List<Schedule>();
+
+        public void AddStudent(Student student) { }
+
+        public void AddInstructor(Instructor instructor) { }
+
+        public void ScheduleClass(Schedule schedule) { }
+    }
+
+    public class Schedule
+    {
+        public DateTime DateTime { get; set; }
+        public string Location { get; set; }
+
+        public void Reschedule(DateTime newDateTime) { }
+    }
+
+    public class Grade : IGradable
+    {
+        public double Score { get; set; }
+        public Student Student { get; set; }
+        public Course Course { get; set; }
+
+        public string GetLetterGrade()
+        {
+            return "";
+        }
+    }
+}
+
+
+
+
+
+
+
+
